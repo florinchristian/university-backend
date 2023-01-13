@@ -1,12 +1,13 @@
 package dev.florinchristian.universitybackend.controller;
 
-import dev.florinchristian.universitybackend.model.booking.Booking;
-import dev.florinchristian.universitybackend.model.booking.BookingID;
+import dev.florinchristian.universitybackend.model.Booking;
 import dev.florinchristian.universitybackend.repository.BookingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.lang.NonNull;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigInteger;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,52 +24,41 @@ public class BookingController {
         return bookingRepository.findAll();
     }
 
+    @GetMapping("/bookings/byRoom")
+    public List<Booking> getBookingsByRoom(@RequestParam(name = "roomId") Integer roomId) {
+        return bookingRepository.findByRoomId(roomId);
+    }
+
     @GetMapping("/bookings/available/v1")
     public boolean roomAvailable(
             @RequestParam(name = "roomId") Integer roomId,
-            @RequestParam(name = "startTime") String _startTime,
-            @RequestParam(name = "endTime") String _endTime
+            @RequestParam(name = "startTime") String bookingStartTime,
+            @RequestParam(name = "endTime") String bookingEndTime
     ) {
-        BookingID bid = new BookingID();
+        List<Booking> roomBookings = bookingRepository.findByRoomId(roomId);
 
-        bid.setStartTime(_startTime);
-        bid.setEndTime(_endTime);
+        LocalDateTime bookingStartDate = LocalDateTime.parse(bookingStartTime);
+        LocalDateTime bookingEndDate = LocalDateTime.parse(bookingEndTime);
 
-        List<BookingID> ids = new ArrayList<>() {
-            {
-                add(bid);
-            }
-        };
-
-        List<Booking> bookings = bookingRepository.findAllById(ids);
-
-        LocalDateTime targetStartTime = LocalDateTime.parse(_startTime);
-        LocalDateTime targetEndTime = LocalDateTime.parse(_endTime);
-
-        for (Booking booking: bookings) {
-            if (!booking.getId().equals(roomId))
-                continue;
-
+        return roomBookings.stream().noneMatch(booking -> {
             LocalDateTime startTime = LocalDateTime.parse(booking.getStartTime().replace(' ', 'T'));
             LocalDateTime endTime = LocalDateTime.parse(booking.getEndTime().replace(' ', 'T'));
 
-            int left = targetStartTime.compareTo(startTime);
-            int right = targetStartTime.compareTo(endTime);
+            if(bookingStartDate.equals(startTime) && bookingEndDate.equals(endTime))
+                return true;
 
-            if (left > 0 && right < 0)
-                return false;
+            if (bookingStartDate.equals(startTime) || bookingEndDate.equals(endTime))
+                return true;
 
-            left = targetEndTime.compareTo(startTime);
-            right = targetEndTime.compareTo(endTime);
-
-            if (left > 0 && right < 0)
-                return false;
-        }
-
-        return true;
+            return (
+                    (bookingStartDate.isAfter(startTime) && bookingStartDate.isBefore(endTime))
+                    ||
+                    (bookingEndDate.isAfter(startTime) && bookingEndDate.isBefore(endTime))
+            );
+        });
     }
 
-    @PostMapping("/bookings")
+    @PostMapping("/bookings/v1")
     public Booking registerBooking(@RequestBody @NonNull Booking booking) {
         bookingRepository.saveAndFlush(booking);
         return booking;

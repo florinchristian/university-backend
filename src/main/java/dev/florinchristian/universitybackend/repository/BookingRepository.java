@@ -1,11 +1,13 @@
 package dev.florinchristian.universitybackend.repository;
 
-import dev.florinchristian.universitybackend.model.booking.Booking;
-import dev.florinchristian.universitybackend.model.booking.BookingID;
+import dev.florinchristian.universitybackend.model.Booking;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-@Repository
-public interface BookingRepository extends JpaRepository<Booking, BookingID> {
+import java.util.ArrayList;
+import java.util.List;
 
+@Repository
+public interface BookingRepository extends JpaRepository<Booking, Integer> {
+    List<Booking> findByRoomId(Integer roomId);
 }
